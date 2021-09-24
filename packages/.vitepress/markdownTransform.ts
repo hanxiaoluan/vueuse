@@ -43,11 +43,11 @@ export function MarkdownTransform(): Plugin {
 
         if (hasTypes)
           code = replacer(code, footer, 'FOOTER', 'tail')
-
-        code = code.replace(/## Component/, '## Component\n<LearnMoreComponents />\n')
-
         if (header)
           code = code.slice(0, sliceIndex) + header + code.slice(sliceIndex)
+
+        code = code.replace(/(# \w+?)\n/, `$1\n\n<FunctionInfo fn="${name}"/>\n`)
+        code = code.replace(/## Component/, '## Component\n<LearnMoreComponents />\n')
       }
 
       return code
