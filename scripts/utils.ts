@@ -9,7 +9,6 @@ import { activePackages, packages } from '../meta/packages'
 import { PackageIndexes, VueUseFunction, VueUsePackage } from '../meta/types'
 
 const DOCS_URL = 'https://vueuse.org'
-const GITHUB_BLOB_URL = 'https://github.com/vueuse/vueuse/blob/main/packages'
 
 const DIR_ROOT = resolve(__dirname, '..')
 const DIR_SRC = resolve(__dirname, '../packages')
@@ -45,41 +44,6 @@ export async function getTypeDefinition(pkg: string, name: string): Promise<stri
 
 export function hasDemo(pkg: string, name: string) {
   return fs.existsSync(join(DIR_SRC, pkg, name, 'demo.vue'))
-}
-
-export function getFunctionHead(pkg: string, name: string) {
-  let head = packages.find(p => p.name === pkg)!.addon
-    ? `available in add-on [\`@vueuse/${pkg}\`](/${pkg}/README)`
-    : ''
-
-  if (head)
-    head = `\n::: tip\n${head}\n:::\n`
-
-  return head
-}
-
-export async function getFunctionFooter(pkg: string, name: string) {
-  const URL = `${GITHUB_BLOB_URL}/${pkg}/${name}`
-
-  const hasDemo = fs.existsSync(join(DIR_SRC, pkg, name, 'demo.vue'))
-
-  const types = await getTypeDefinition(pkg, name)
-
-  const typingSection = types && `## Type Declarations\n\n\`\`\`typescript\n${types.trim()}\n\`\`\``
-
-  const links = ([
-    ['Source', `${URL}/index.ts`],
-    hasDemo ? ['Demo', `${URL}/demo.vue`] : undefined,
-    ['Docs', `${URL}/index.md`],
-  ])
-    .filter(i => i)
-    .map(i => `[${i![0]}](${i![1]})`).join(' • ')
-
-  const sourceSection = `## Source\n\n${links}\n`
-
-  const changelogSection = `## Changelog\n\n<Changelog fn="${name}" />\n`
-
-  return `${typingSection || ''}\n\n${sourceSection}\n${changelogSection}\n`
 }
 
 export async function listFunctions(dir: string, ignore: string[] = []) {
