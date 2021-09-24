@@ -5,8 +5,11 @@ import fg from 'fast-glob'
 import parser from 'prettier/parser-typescript'
 import prettier from 'prettier'
 import YAML from 'js-yaml'
+import Git from 'simple-git'
 import { activePackages, packages } from '../meta/packages'
 import { PackageIndexes, VueUseFunction, VueUsePackage } from '../meta/types'
+
+const git = Git()
 
 const DOCS_URL = 'https://vueuse.org'
 
@@ -29,6 +32,7 @@ export async function getTypeDefinition(pkg: string, name: string): Promise<stri
   types = types
     .replace(/import\(.*?\)\./g, '')
     .replace(/import[\s\S]+?from ?["'][\s\S]+?["']/g, '')
+    .replace(/export {}/g, '')
 
   return prettier
     .format(
@@ -81,14 +85,14 @@ export async function readIndexes() {
 
     indexes.packages[info.name] = pkg
 
-    for (const fnName of functions) {
+    await Promise.all(functions.map(async(fnName) => {
       const mdPath = join(dir, fnName, 'index.md')
+      const tsPath = join(dir, fnName, 'index.ts')
 
       const fn: VueUseFunction = {
         name: fnName,
         package: pkg.name,
-        // TODO: READ FROM MTIME
-        lastUpdated: 0,
+        lastUpdated: +await git.raw(['log', '-1', '--format=%at', tsPath]) * 1000,
       }
 
       if (fs.existsSync(join(dir, fnName, 'component.ts')))
@@ -99,7 +103,7 @@ export async function readIndexes() {
       if (!fs.existsSync(mdPath)) {
         fn.internal = true
         indexes.functions.push(fn)
-        continue
+        return
       }
 
       fn.docs = `${DOCS_URL}/${pkg.name}/${fnName}/`
@@ -124,9 +128,10 @@ export async function readIndexes() {
         fn.depreacted = true
 
       indexes.functions.push(fn)
-    }
+    }))
   }
 
+  indexes.functions.sort((a, b) => a.name.localeCompare(b.name))
   indexes.categories = getCategories(indexes.functions)
 
   return indexes
@@ -261,14 +266,6 @@ export async function updateIndexREADME({ packages, functions }: PackageIndexes)
 }
 
 export async function updateFunctionsMD({ packages, functions }: PackageIndexes) {
-  let mdFn = await fs.readFile('packages/functions.md', 'utf-8')
-
-  const coreFunctions = functions.filter(i => ['core', 'shared'].includes(i.package))
-  const functionListMD = stringifyFunctions(coreFunctions)
-
-  mdFn = replacer(mdFn, functionListMD, 'FUNCTIONS_LIST')
-  await fs.writeFile('packages/functions.md', mdFn, 'utf-8')
-
   let mdAddons = await fs.readFile('packages/add-ons.md', 'utf-8')
 
   const addons = Object.values(packages)
